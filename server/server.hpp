@@ -1,0 +1,10 @@
+class Server {
+	public: 
+		Server(int pin_cs, int pin_rst, int pin_irq);
+		bool init();
+	private:
+		int pin_cs;
+		int pin_rst;
+		int pin_irq;
+
+};

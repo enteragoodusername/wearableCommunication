@@ -1,0 +1,10 @@
+class Receiver {
+	public: 
+		Receiver();
+		bool init();
+	private:
+		int pin_cs;
+		int pin_rst;
+		int pin_irq;
+
+};

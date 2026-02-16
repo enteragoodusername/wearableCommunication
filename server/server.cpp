@@ -1,0 +1,14 @@
+#include "server.hpp"
+#include <RH_RF95.h>
+
+
+Server::Server(int pin_cs, int pin_rst, int pin_irq ){
+	this-> pin_cs = pin_cs;
+	this -> pin_rst = pin_rst;
+	this -> pin_cs = pin_irq;
+}
+bool Server::init(){
+	Serial.println("Starting LoRa Module");
+}
+
+
