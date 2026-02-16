@@ -1,0 +1,31 @@
+#include "alarmServer.hpp"
+#include <RH_RF95.h>
+#include "comm_declarations.hpp"
+
+
+AlarmServer::AlarmServer(int pin_cs, int pin_rst, int pin_irq ){
+	this-> pin_cs = pin_cs;
+	this -> pin_rst = pin_rst;
+	this -> pin_cs = pin_irq;
+}
+bool AlarmServer::init(){
+	SPI.begin();
+	Serial.println("Starting LoRa Module");
+	  if (!rf95.init()) {
+	Serial.println("RH_RF95 init failed. Check wiring/pins/power.");
+		return false;
+	}
+
+	if (!rf95.setFrequency(RF_FREQ_MHZ)) {
+	Serial.println("setFrequency failed (unsupported freq?)");
+		return false;
+	}
+
+
+
+	Serial.println("LoRa ready.");
+	Serial.print("Freq MHz: "); Serial.println(RF_FREQ_MHZ);
+	return true;
+}
+
+
