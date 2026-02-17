@@ -33,6 +33,7 @@ bool AlarmServer::init(){
 
 
 
+	rf95.setTxPower(TX_POWER_DBM, false);
 	Serial.println("LoRa ready.");
 	Serial.print("Freq MHz: "); Serial.println(RF_FREQ_MHZ);
 	return true;
