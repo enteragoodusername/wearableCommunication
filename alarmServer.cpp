@@ -52,7 +52,7 @@ bool AlarmServer::send_heartbeat(){
 	}
 	
 }
-bool AlarmServer::send_heartbeat(){
+bool AlarmServer::send_alarm(){
 	Serial.print("Sending Alarm... ");
 	uint8_t heartbeat = 2;
 	if (rf95.send(&heartbeat, sizeof(heartbeat) && rf95.waitPacketSent())){
