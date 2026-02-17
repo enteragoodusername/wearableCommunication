@@ -4,6 +4,7 @@ class AlarmServer {
 	public: 
 		AlarmServer(uint8_t pin_cs_, uint8_t pin_rst_, int pin_irq_);
 		bool init();
+		bool send_heartbeat();
 	private:
 		uint8_t pin_cs;
 		int pin_rst;

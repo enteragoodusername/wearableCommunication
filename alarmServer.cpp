@@ -39,4 +39,11 @@ bool AlarmServer::init(){
 	return true;
 }
 
-
+	bool AlarmServer::send_heartbeat(){
+		Serial.print("Sending Heartbeat... ");
+		uint8_t heartbeat = 1;
+		if (rf95.send(&heartbeat, sizeof(heartbeat) && rf95.waitPacketSent())){
+			Serial.println("Heartbeat Sent");
+		}
+		else Serial.println("Heartbeat Failed!");
+	}
