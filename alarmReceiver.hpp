@@ -4,7 +4,13 @@ class AlarmReceiver {
 	public: 
 		AlarmReceiver(uint8_t pin_cs_, uint8_t pin_rst_, int pin_irq_);
 		bool init();
-        std::vector<uint8_t> receive_data();
+		enum MessageType{
+			Heartbeat,
+			Alarm,
+			Unkown,
+			None
+		};
+        MessageType get_message();
 	private:
 		uint8_t pin_cs;
 		int pin_rst;

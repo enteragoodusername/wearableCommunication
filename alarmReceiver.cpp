@@ -39,10 +39,15 @@ bool AlarmReceiver::init(){
 	return true;
 }
 
-std::vector<uint8_t> AlarmReceiver::receive_data(){
+AlarmReceiver::MessageType AlarmReceiver::get_message(){
     std::vector<uint8_t> data(100,0);
     uint8_t len = 100;
+	if (!rf95.available()) return AlarmReceiver::None;
     rf95.recv(data.data(), &len);
-    return data;
+	int message = data.front();
+	Serial.println("Recieved Message");
+	if (message == 1) return MessageType::Heartbeat;
+	else if (message == 2) return MessageType::Alarm;
+	else return MessageType::Unkown;
     
 }
