@@ -45,7 +45,7 @@ AlarmReceiver::MessageType AlarmReceiver::get_message(){
 	if (!rf95.available()) return AlarmReceiver::None;
     rf95.recv(data.data(), &len);
 	int message = data.front();
-	Serial.println("Recieved Message");
+	//Serial.println("Recieved Message");
 	if (message == 1) return MessageType::Heartbeat;
 	else if (message == 2) return MessageType::Alarm;
 	else return MessageType::Unkown;
