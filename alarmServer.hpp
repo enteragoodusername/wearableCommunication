@@ -6,6 +6,9 @@ class AlarmServer {
 		bool init();
 		bool send_heartbeat();
 		bool send_alarm();
+		
+		bool check_for_ack(uint8_t &seq_out);
+		bool get_message();
 	private:
 		uint8_t pin_cs;
 		int pin_rst;

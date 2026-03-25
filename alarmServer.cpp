@@ -2,6 +2,8 @@
 #include "comm_declarations.hpp"
 #include "Arduino.h"
 
+static uint8_t sequence_counter = 0;
+
 AlarmServer::AlarmServer(uint8_t pin_cs_, uint8_t pin_rst_, int pin_irq_ = -1) : 
 	pin_cs(pin_cs_),
 	pin_rst(pin_rst_),
@@ -39,29 +41,75 @@ bool AlarmServer::init(){
 	return true;
 }
 
-bool AlarmServer::send_heartbeat(){
-	Serial.print("Sending Heartbeat... ");
-	uint8_t heartbeat = 1;
-	if (rf95.send(&heartbeat, sizeof(heartbeat) && rf95.waitPacketSent())){
-		Serial.println("Heartbeat Sent");
-		return true;
-	}
-	else{
-		Serial.println("Heartbeat Failed!");
-		return false;
-	}
+// bool AlarmServer::send_heartbeat(){
+// 	Serial.print("Sending Heartbeat... ");
+// 	uint8_t heartbeat = 1;
+// 	if (rf95.send(&heartbeat, sizeof(heartbeat) && rf95.waitPacketSent())){
+// 		Serial.println("Heartbeat Sent");
+// 		return true;
+// 	}
+// 	else{
+// 		Serial.println("Heartbeat Failed!");
+// 		return false;
+// 	}
 	
-}
+// }
+// bool AlarmServer::send_alarm(){
+// 	Serial.print("Sending Alarm... ");
+// 	uint8_t heartbeat = 2;
+// 	if (rf95.send(&heartbeat, sizeof(heartbeat) && rf95.waitPacketSent())){
+// 		Serial.println("Alarm Sent");
+// 		return true;
+// 	}
+// 	else{
+// 		Serial.println("Alarm Failed!");
+// 		return false;
+// 	}
+// }
+
 bool AlarmServer::send_alarm(){
-	Serial.print("Sending Alarm... ");
-	uint8_t heartbeat = 2;
-	if (rf95.send(&heartbeat, sizeof(heartbeat) && rf95.waitPacketSent())){
-		Serial.println("Alarm Sent");
-		return true;
+    uint8_t packet[2];
+    packet[0] = 2;
+    packet[1] = sequence_counter++;
+
+	Serial.print("ALARM Seq = ");
+	Serial.println(packet[1]);
+
+    rf95.send(packet, sizeof(packet));
+    rf95.waitPacketSent();
+
+    return true;
+}
+
+bool AlarmServer::send_heartbeat(){
+    uint8_t packet[2];
+    packet[0] = 1;
+    packet[1] = sequence_counter++;  
+
+	Serial.print("HEARTBEAT seq=");
+    Serial.println(packet[1]);
+
+    rf95.send(packet, sizeof(packet));
+    rf95.waitPacketSent();
+
+    return true;
+}
+
+bool AlarmServer::check_for_ack(uint8_t &seq_out){
+    uint8_t buf[10];
+    uint8_t len = sizeof(buf);
+
+    if (!rf95.available()) return false;
+	if (rf95.available()){
+		Serial.println("ACK check!!");
 	}
-	else{
-		Serial.println("Alarm Failed!");
-		return false;
-	}
-	
+    rf95.recv(buf, &len);
+    if (len < 2) return false;
+
+    if (buf[0] == MSG_ACK){
+        seq_out = buf[1];
+        return true;
+    }
+
+    return false;
 }
