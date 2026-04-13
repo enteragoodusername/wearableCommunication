@@ -105,3 +105,8 @@ bool AlarmReceiver::send_ack(uint8_t seq){
 uint8_t AlarmReceiver::get_last_seq() const {
     return last_received_seq;
 }
+
+
+void AlarmReceiver::sleep(){
+    rf95.sleep();
+}

@@ -15,6 +15,7 @@ class AlarmReceiver {
 		void reset_sequence();
 		bool send_ack(uint8_t seq);
 		uint8_t get_last_seq() const;
+        void sleep();
 	private:
 		uint8_t pin_cs;
 		int pin_rst;
