@@ -1,6 +1,7 @@
 #include "alarmReceiver.hpp"
 #include "comm_declarations.hpp"
 #include "Arduino.h"
+#include "mac.hpp"
 
 
 AlarmReceiver::AlarmReceiver(uint8_t pin_cs_, uint8_t pin_rst_, int pin_irq_) : 
@@ -41,11 +42,23 @@ bool AlarmReceiver::init(){
 }
 
 AlarmReceiver::MessageType AlarmReceiver::get_message(){
-    std::vector<uint8_t> data(100,0);
-    uint8_t len = 100;
+    // std::vector<uint8_t> data(100,0);
+    // uint8_t len = 100;
+
+	uint8_t data[32] = {0};
+	uint8_t len = sizeof(data);
+
 	if (!rf95.available()) return AlarmReceiver::None;
-    rf95.recv(data.data(), &len);
-	if (len < 2) return AlarmReceiver::None;
+    rf95.recv(data, &len);
+
+	if (len < 2 + MAC_TAG_SIZE) return AlarmReceiver::None;
+
+	if (!verify_mac(data, 2, &data[2])) {
+		Serial.println("MAC failed, discarding packet");
+		return AlarmReceiver::None;
+	}
+
+
 	uint8_t type = data[0];
 	uint8_t seq  = data[1];
 	last_received_seq = seq;
@@ -92,9 +105,12 @@ void AlarmReceiver::reset_sequence() {
 }
 
 bool AlarmReceiver::send_ack(uint8_t seq){
-    uint8_t packet[2];
+    uint8_t packet[2 + MAC_TAG_SIZE];
+
     packet[0] = MSG_ACK;
     packet[1] = seq;
+
+	compute_mac(packet, 2, &packet[2]);
 
     rf95.send(packet, sizeof(packet));
     rf95.waitPacketSent();

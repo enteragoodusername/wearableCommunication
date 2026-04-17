@@ -1,8 +1,11 @@
 #include "alarmServer.hpp"
 #include "comm_declarations.hpp"
 #include "Arduino.h"
+#include "mac.hpp"
 
 static uint8_t sequence_counter = 0;
+volatile bool waiting_for_ack = false;
+volatile uint32_t ack_deadline = 0;
 
 AlarmServer::AlarmServer(uint8_t pin_cs_, uint8_t pin_rst_, int pin_irq_ = -1) : 
 	pin_cs(pin_cs_),
@@ -11,6 +14,7 @@ AlarmServer::AlarmServer(uint8_t pin_cs_, uint8_t pin_rst_, int pin_irq_ = -1) :
 	rf95(pin_cs_, pin_irq)
 	{
 }
+
 bool AlarmServer::init(){
 	SPI.begin();
 	if (pin_rst != -1){
@@ -41,50 +45,61 @@ bool AlarmServer::init(){
 	return true;
 }
 
-// bool AlarmServer::send_heartbeat(){
-// 	Serial.print("Sending Heartbeat... ");
-// 	uint8_t heartbeat = 1;
-// 	if (rf95.send(&heartbeat, sizeof(heartbeat) && rf95.waitPacketSent())){
-// 		Serial.println("Heartbeat Sent");
-// 		return true;
-// 	}
-// 	else{
-// 		Serial.println("Heartbeat Failed!");
-// 		return false;
-// 	}
-	
-// }
-// bool AlarmServer::send_alarm(){
-// 	Serial.print("Sending Alarm... ");
-// 	uint8_t heartbeat = 2;
-// 	if (rf95.send(&heartbeat, sizeof(heartbeat) && rf95.waitPacketSent())){
-// 		Serial.println("Alarm Sent");
-// 		return true;
-// 	}
-// 	else{
-// 		Serial.println("Alarm Failed!");
-// 		return false;
-// 	}
-// }
-
 bool AlarmServer::send_alarm(){
-    uint8_t packet[2];
+    uint8_t packet[2 + MAC_TAG_SIZE];
     packet[0] = 2;
     packet[1] = sequence_counter++;
 
+	compute_mac(packet, 2, &packet[2]);
+	//packet[2] ^= 0xFF; // test for inserting corrupted packet
+
 	Serial.print("ALARM Seq = ");
 	Serial.println(packet[1]);
+	Serial.print("MAC: ");
+	for (int i = 0; i < MAC_TAG_SIZE; i++) {
+		Serial.print(packet[2+i], HEX);
+		Serial.print(" ");
+	}
+	Serial.println();
 
-    rf95.send(packet, sizeof(packet));
+	// waiting_for_ack = true;
+
+    // rf95.send(packet, sizeof(packet));
+    // rf95.waitPacketSent();
+
+	// uint32_t start = millis();
+	// uint8_t seq;
+
+	// while (millis() - start < 200) {
+	// 	if (check_for_ack(seq)) {
+			
+	// 		Serial.print("ACK received for seq=");
+	// 		Serial.println(seq);
+	// 		waiting_for_ack = false;
+	// 		return true;
+	// 	}
+	// }
+
+	// waiting_for_ack = false;
+
+	// Serial.println("ACK timeout");
+	
+
+	waiting_for_ack = true;
+	ack_deadline = millis() + 300;
+
+	rf95.send(packet, sizeof(packet));
     rf95.waitPacketSent();
 
     return true;
 }
 
 bool AlarmServer::send_heartbeat(){
-    uint8_t packet[2];
+    uint8_t packet[2 + MAC_TAG_SIZE];
     packet[0] = 1;
     packet[1] = sequence_counter++;  
+
+	compute_mac(packet, 2, &packet[2]);
 
 	Serial.print("HEARTBEAT seq=");
     Serial.println(packet[1]);
@@ -96,7 +111,7 @@ bool AlarmServer::send_heartbeat(){
 }
 
 bool AlarmServer::check_for_ack(uint8_t &seq_out){
-    uint8_t buf[10];
+    uint8_t buf[16];
     uint8_t len = sizeof(buf);
 
     if (!rf95.available()) return false;
@@ -104,7 +119,12 @@ bool AlarmServer::check_for_ack(uint8_t &seq_out){
 		Serial.println("ACK check!!");
 	}
     rf95.recv(buf, &len);
-    if (len < 2) return false;
+    if (len < 2 + MAC_TAG_SIZE) return false;
+
+	if (!verify_mac(buf, 2, &buf[2])) {
+		Serial.println("BAD ACK MAC");
+		return false;
+	}
 
     if (buf[0] == MSG_ACK){
         seq_out = buf[1];
