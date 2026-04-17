@@ -31,7 +31,10 @@ bool AlarmServer::init(){
 		Serial.println("RH_RF95 init failed. Check wiring/pins/power.");
 		return false;
 	}
-    rf95.setModemConfig(RH_RF95::Bw500Cr45Sf128);
+
+    rf95.setModemConfig(LORA_MODEM);
+
+	
 	if (!rf95.setFrequency(RF_FREQ_MHZ)) {
 		Serial.println("setFrequency failed (unsupported freq?)");
 		return false;
