@@ -7,6 +7,9 @@ static uint8_t sequence_counter = 0;
 volatile bool waiting_for_ack = false;
 volatile uint32_t ack_deadline = 0;
 
+static uint32_t send_time_ms = 0;
+static uint8_t expected_seq = 0;
+
 AlarmServer::AlarmServer(uint8_t pin_cs_, uint8_t pin_rst_, int pin_irq_ = -1) : 
 	pin_cs(pin_cs_),
 	pin_rst(pin_rst_),
@@ -53,17 +56,20 @@ bool AlarmServer::send_alarm(){
     packet[0] = 2;
     packet[1] = sequence_counter++;
 
+	expected_seq = packet[1];
+	send_time_ms = millis();
+
 	compute_mac(packet, 2, &packet[2]);
 	//packet[2] ^= 0xFF; // test for inserting corrupted packet
 
 	Serial.print("ALARM Seq = ");
-	Serial.println(packet[1]);
-	Serial.print("MAC: ");
-	for (int i = 0; i < MAC_TAG_SIZE; i++) {
-		Serial.print(packet[2+i], HEX);
-		Serial.print(" ");
-	}
-	Serial.println();
+	// Serial.println(packet[1]);
+	// Serial.print("MAC: ");
+	// for (int i = 0; i < MAC_TAG_SIZE; i++) {
+	// 	Serial.print(packet[2+i], HEX);
+	// 	Serial.print(" ");
+	// }
+	// Serial.println();
 
 	// waiting_for_ack = true;
 
@@ -89,7 +95,7 @@ bool AlarmServer::send_alarm(){
 	
 
 	waiting_for_ack = true;
-	ack_deadline = millis() + 300;
+	ack_deadline = millis() + 800;
 
 	rf95.send(packet, sizeof(packet));
     rf95.waitPacketSent();
@@ -104,8 +110,8 @@ bool AlarmServer::send_heartbeat(){
 
 	compute_mac(packet, 2, &packet[2]);
 
-	Serial.print("HEARTBEAT seq=");
-    Serial.println(packet[1]);
+	//Serial.print("HEARTBEAT seq=");
+    //Serial.println(packet[1]);
 
     rf95.send(packet, sizeof(packet));
     rf95.waitPacketSent();
@@ -119,7 +125,7 @@ bool AlarmServer::check_for_ack(uint8_t &seq_out){
 
     if (!rf95.available()) return false;
 	if (rf95.available()){
-		Serial.println("ACK check!!");
+		//Serial.println("ACK check:");
 	}
     rf95.recv(buf, &len);
     if (len < 2 + MAC_TAG_SIZE) return false;
@@ -130,9 +136,23 @@ bool AlarmServer::check_for_ack(uint8_t &seq_out){
 	}
 
     if (buf[0] == MSG_ACK){
-        seq_out = buf[1];
-        return true;
+        uint8_t seq = buf[1];
+
+		if (seq != expected_seq) return false;
+
+		uint32_t rtt = millis() - send_time_ms;
+
+		Serial.print("ACK received for seq = ");
+		Serial.print(seq);
+		Serial.print(" | RTT = ");
+		Serial.print(rtt);
+		Serial.println(" ms\n");
+
+		seq_out = seq;
+		return true;
     }
+
+	Serial.println("ACK timeout\n");
 
     return false;
 }
