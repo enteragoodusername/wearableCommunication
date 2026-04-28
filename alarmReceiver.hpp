@@ -14,6 +14,7 @@ class AlarmReceiver {
         MessageType get_message();
 		void reset_sequence();
 		bool send_ack(uint8_t seq);
+		bool send_awearable_alarm();
 		uint8_t get_last_seq() const;
         void sleep();
 	private:
@@ -24,6 +25,7 @@ class AlarmReceiver {
 		uint8_t last_seq = 0;
 		uint8_t last_received_seq = 0;
 		bool has_received_first = false;
+		bool ignore_next_packet = false;
 
 };
 

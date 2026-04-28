@@ -51,6 +51,11 @@ AlarmReceiver::MessageType AlarmReceiver::get_message(){
 	if (!rf95.available()) return AlarmReceiver::None;
     rf95.recv(data, &len);
 
+	if (ignore_next_packet) {
+		ignore_next_packet = false;
+		return MessageType::None;
+	}
+
 	if (len < 2 + MAC_TAG_SIZE) return AlarmReceiver::None;
 
 	if (!verify_mac(data, 2, &data[2])) {
@@ -61,30 +66,28 @@ AlarmReceiver::MessageType AlarmReceiver::get_message(){
 
 	uint8_t type = data[0];
 	uint8_t seq  = data[1];
-	last_received_seq = seq;
-	Serial.print("RX packet | type=");
-	Serial.print(type);
-	Serial.print(" seq=");
-	Serial.print(seq);
-	Serial.print(" last_seq=");
-	Serial.println(last_seq);
+	
+	// Serial.print("RX packet | type=");
+	// Serial.print(type);
+	// Serial.print(" seq=");
+	// Serial.print(seq);
+	// Serial.print(" last_seq=");
+	// Serial.println(last_seq);
 
 	//int message = data.front();
 	Serial.println("Recieved Message");
 
 	uint8_t diff = seq - last_seq;
 
-	if (has_received_first) {
-		if (diff == 0) {
-			return MessageType::None;
-		}
-		if (type == MSG_ACK) {
-			last_received_seq = seq;
-			return MessageType::Ack;
-		}
-		if (diff > 128) {
-			return MessageType::None;
-		}
+	if (has_received_first && seq == last_seq) {
+		return MessageType::None;
+	}
+	
+	if (type == MSG_ACK) {
+		last_received_seq = seq;
+		last_seq = seq;
+		has_received_first = true;
+		return MessageType::Ack;
 	}
 
 	last_seq = seq;
@@ -92,7 +95,9 @@ AlarmReceiver::MessageType AlarmReceiver::get_message(){
 
 	Serial.print("ACCEPTED packet | seq=");
 	Serial.println(seq);
+	Serial.print("\n");
 
+	last_received_seq = seq;
 	if (type == 1) return MessageType::Heartbeat;
 	else if (type == 2) return MessageType::Alarm;
 	else if (type == MSG_ACK) return MessageType::Ack;
@@ -112,8 +117,35 @@ bool AlarmReceiver::send_ack(uint8_t seq){
 
 	compute_mac(packet, 2, &packet[2]);
 
+	Serial.print("HELO");
     rf95.send(packet, sizeof(packet));
     rf95.waitPacketSent();
+
+    return true;
+}
+
+bool AlarmReceiver::send_awearable_alarm() {
+	
+	uint8_t packet[2 + MAC_TAG_SIZE];
+
+	uint8_t seq = last_received_seq + 1;
+
+	packet[0] = MSG_ALARM;
+	packet[1] = seq;
+
+	compute_mac(packet, 2, &packet[2]);
+
+	Serial.print("SELF ALARM SENT seq=");
+    Serial.println(seq);
+
+    rf95.send(packet, sizeof(packet));
+    rf95.waitPacketSent();
+
+	ignore_next_packet = true;
+
+	last_received_seq = seq;
+	last_seq = seq;
+	has_received_first = true;
 
     return true;
 }

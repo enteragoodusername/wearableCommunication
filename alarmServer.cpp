@@ -95,10 +95,13 @@ bool AlarmServer::send_alarm(){
 	
 
 	waiting_for_ack = true;
-	ack_deadline = millis() + 800;
+	ack_deadline = millis() + 2000;
 
 	rf95.send(packet, sizeof(packet));
     rf95.waitPacketSent();
+	// delay(20);
+	// rf95.send(packet, sizeof(packet));
+    // rf95.waitPacketSent();
 
     return true;
 }
@@ -120,39 +123,78 @@ bool AlarmServer::send_heartbeat(){
 }
 
 bool AlarmServer::check_for_ack(uint8_t &seq_out){
+    // uint8_t buf[16];
+    // uint8_t len = sizeof(buf);
+
+    // if (!rf95.available()) return false;
+	// if (rf95.available()){
+	// 	//Serial.println("ACK check:");
+	// }
+    // rf95.recv(buf, &len);
+    // if (len < 2 + MAC_TAG_SIZE) return false;
+
+	// if (!verify_mac(buf, 2, &buf[2])) {
+	// 	Serial.println("BAD ACK MAC");
+	// 	return false;
+	// }
+
+    // if (buf[0] == MSG_ACK){
+    //     uint8_t seq = buf[1];
+
+	// 	if (seq == expected_seq) {
+	// 		uint32_t rtt = millis() - send_time_ms;
+
+	// 		Serial.print("ACK received for seq = ");
+	// 		Serial.print(seq);
+	// 		Serial.print(" | RTT = ");
+	// 		Serial.print(rtt);
+	// 		Serial.println(" ms\n");
+
+	// 		seq_out = seq;
+	// 		return true;
+	// 	}
+    // }
+
+	// //Serial.println("ACK timeout\n");
+
+    // return false;
+	bool got_any = false;
+
     uint8_t buf[16];
-    uint8_t len = sizeof(buf);
+    uint8_t len;
 
-    if (!rf95.available()) return false;
-	if (rf95.available()){
-		//Serial.println("ACK check:");
-	}
-    rf95.recv(buf, &len);
-    if (len < 2 + MAC_TAG_SIZE) return false;
+    while (rf95.available()) {
 
-	if (!verify_mac(buf, 2, &buf[2])) {
-		Serial.println("BAD ACK MAC");
-		return false;
-	}
+        len = sizeof(buf);
+        rf95.recv(buf, &len);
 
-    if (buf[0] == MSG_ACK){
-        uint8_t seq = buf[1];
+        if (len < 2 + MAC_TAG_SIZE) continue;
 
-		if (seq != expected_seq) return false;
+        if (!verify_mac(buf, 2, &buf[2])) {
+            Serial.println("BAD ACK MAC");
+            continue;
+        }
 
-		uint32_t rtt = millis() - send_time_ms;
+        if (buf[0] == MSG_ACK){
+            uint8_t seq = buf[1];
 
-		Serial.print("ACK received for seq = ");
-		Serial.print(seq);
-		Serial.print(" | RTT = ");
-		Serial.print(rtt);
-		Serial.println(" ms\n");
+            if (seq == expected_seq) {
+                uint32_t rtt = millis() - send_time_ms;
 
-		seq_out = seq;
-		return true;
+                Serial.print("ACK received for seq = ");
+                Serial.print(seq);
+                Serial.print(" | RTT = ");
+                Serial.print(rtt);
+				float one_way = rtt * 0.5;
+				Serial.print(" | One-way = ");
+				Serial.print(one_way);
+                Serial.println(" ms");
+
+                seq_out = seq;
+                got_any = true;
+            }
+        }
     }
 
-	Serial.println("ACK timeout\n");
-
-    return false;
+    return got_any;
 }
